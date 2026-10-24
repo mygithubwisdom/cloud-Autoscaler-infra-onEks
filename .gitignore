@@ -1,0 +1,64 @@
+#Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+backups/
+
+# Dependencies
+node_modules/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.tfplan.out
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SSH keys
+*.pem
+*.key
+
+# Test coverage
+coverage/
+
+# Local Python artifacts from testing the demonstration application.
+__pycache__/
+*.py[cod]
+
+# Variable and backend files can contain account-specific or sensitive values.
+*.tfvars
+*.tfvars.json
+backend.hcl
+!*.tfvars.example
+!backend.hcl.example
