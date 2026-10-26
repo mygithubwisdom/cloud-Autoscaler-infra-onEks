@@ -4,7 +4,7 @@ output "state_bucket_name" {
 }
 
 output "backend_configuration" {
-  description = "Values to copy into environments/prod/backend.hcl."
+  description = "Values to copy into task-1/infra/backend.prod.hcl."
   value       = <<-EOT
     bucket         = "${aws_s3_bucket.terraform_state.id}"
     key            = "task1-assessment/prod/terraform.tfstate"

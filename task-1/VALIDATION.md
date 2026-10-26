@@ -12,7 +12,9 @@ Completed locally:
 - No standalone application EC2 instance, ALB, target group or ASG resource remains.
 - Vendored ALB policy parsed as valid JSON and matched pinned upstream v2.14.1.
 - Main provider lock includes verified linux_arm64 and linux_amd64 checksums.
-- No backend key, existing GitHub OIDC identity, bootstrap bucket resource or state was changed.
+- Existing GitHub OIDC identities, bootstrap bucket resources and AWS state were not changed.
+- After owner confirmation, backend.prod.hcl was corrected to the already-initialized key
+  task1-assessment/prod/terraform.tfstate. This corrects configuration; no state migration occurred.
 
 Not completed locally:
 
@@ -26,7 +28,7 @@ Not completed locally:
 
 Before deployment:
 
-1. Reconcile initialized S3 state location (two existing keys differ; README explains).
+1. Retain the owner-confirmed backend location documented in README.
 2. Fill account/admin/public API CIDR and verified EKS/add-on/PostgreSQL inputs.
 3. Review optional domain, Single-AZ RDS and single-NAT cost/availability choices.
 4. Pass provider-backed validation/mock tests; review and explicitly approve a live plan.

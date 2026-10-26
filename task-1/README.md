@@ -45,18 +45,20 @@ The checked-in `infra/backend.prod.hcl` is preserved exactly:
 
 ```hcl
 bucket       = "my-goapi-cloudeks-bucket-wisdom"
-key          = "task-1-iac/prod/terraform.tfstate"
+key          = "task1-assessment/prod/terraform.tfstate"
 region       = "us-east-1"
 encrypt      = true
 use_lockfile = true
 ```
 
-**An existing mismatch needs confirmation:** bootstrap's older output prints
-`task1-assessment/prod/terraform.tfstate`, while this root's backend file uses
-`task-1-iac/prod/terraform.tfstate`. They are different objects. No key has been
-changed or state migrated by this edit. Before any backend reinitialization,
-inspect the metadata of the directory you originally initialized. Do not print
-or share the entire metadata/state file because it can hold credentials.
+The owner confirmed the initialized backend metadata on the Chromebook:
+`my-goapi-cloudeks-bucket-wisdom`, `task1-assessment/prod/terraform.tfstate`,
+`us-east-1`. The main backend configuration and bootstrap output now match
+that existing location. No state was migrated. Keep this key unchanged.
+
+If you move directories later, inspect local backend metadata before
+reinitializing. Do not print or share the entire metadata/state file because it
+can hold credentials.
 
 From that original initialized directory, this prints only the backend location:
 
