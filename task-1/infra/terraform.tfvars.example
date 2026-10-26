@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars (gitignored) and replace ALL placeholders.
+aws_account_id         = "REPLACE_WITH_12_DIGIT_ACCOUNT_ID"
+eks_admin_principal_arn = "arn:aws:iam::REPLACE_ACCOUNT:role/REPLACE_ADMIN_ROLE"
+public_api_cidrs        = ["REPLACE_WITH_YOUR_PUBLIC_IP/32"]
+# Verify available EKS/add-on/PostgreSQL versions in us-east-1 using README commands.
+kubernetes_version = "REPLACE_WITH_SUPPORTED_MINOR"
+addon_versions = {
+  vpc_cni    = "REPLACE_WITH_COMPATIBLE_VERSION"
+  coredns    = "REPLACE_WITH_COMPATIBLE_VERSION"
+  kube_proxy = "REPLACE_WITH_COMPATIBLE_VERSION"
+}
+db_engine_version = "REPLACE_WITH_AVAILABLE_POSTGRES_VERSION"
+# Optional: supply both for ACM DNS validation in an existing public hosted zone.
+# domain_name    = "api.example.com"
+# hosted_zone_id = "Z_REPLACE"
+# db_multi_az = true  # costs more; false is the documented sandbox default.
+# enable_ssm_endpoints = true  # optional paid endpoints; NAT is already provided.

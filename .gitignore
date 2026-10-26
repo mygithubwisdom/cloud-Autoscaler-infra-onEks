@@ -61,3 +61,7 @@ __pycache__/
 backend.hcl
 !*.tfvars.example
 !backend.hcl.example
+
+# Local provider debug output and test state
+*.tfdebug.log
+*.tftest.json
