@@ -1,211 +1,104 @@
-# AWS Systems Manager (SSM) Session Manager Configuration
-
-# IAM Role for EC2 to use SSM
-resource "aws_iam_role" "app_server_role" {
-  name = "${var.project_name}-app-server-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = {
-    Name = "${var.project_name}-ssm-role"
-  }
+# SSM permissions attach to the actual worker role in iam.tf. EKS AL2023
+# must have amazon-ssm-agent running; verify after nodes join. No SSH port/key.
+# NAT is the default connectivity path. These endpoints are optional extras.
+resource "aws_security_group" "endpoints" {
+  count       = var.enable_ssm_endpoints ? 1 : 0
+  name_prefix = "${local.name_prefix}-ssm-endpoints-"
+  description = "Private SSM endpoints accessed by EKS workers"
+  vpc_id      = aws_vpc.main.id
 }
-
-# Attach AWS managed SSM policy
-resource "aws_iam_role_policy_attachment" "ssm_policy" {
-  role       = aws_iam_role.ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+resource "aws_vpc_security_group_ingress_rule" "nodes_to_endpoints" {
+  count                        = var.enable_ssm_endpoints ? 1 : 0
+  security_group_id            = aws_security_group.endpoints[0].id
+  referenced_security_group_id = aws_security_group.eks_nodes.id
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  description                  = "Workers to private SSM endpoints"
 }
-
-# Custom policy for CloudWatch Logs
-resource "aws_iam_role_policy" "ssm_cloudwatch" {
-  name = "${var.project_name}-ssm-cloudwatch-policy"
-  role = aws_iam_role.ssm_role.id
-
+resource "aws_vpc_endpoint" "ssm" {
+  for_each            = var.enable_ssm_endpoints ? toset(["ssm", "ssmmessages"]) : toset([])
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.${each.value}"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = local.private_subnet_ids
+  security_group_ids  = [aws_security_group.endpoints[0].id]
+  private_dns_enabled = true
+}
+resource "aws_cloudwatch_log_group" "ssm_sessions" {
+  name              = "/aws/ssm/${local.name_prefix}/sessions"
+  retention_in_days = 30
+}
+resource "aws_iam_role_policy" "ssm_session_logs" {
+  role = aws_iam_role.eks_nodes.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogStreams"
-        ]
-        Resource = "arn:aws:logs:*:*:*"
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"]
+        Resource = "${aws_cloudwatch_log_group.ssm_sessions.arn}:*"
       },
       {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject"
-        ]
-        Resource = "arn:aws:s3:::aws-ssm-*/*"
+        Effect   = "Allow"
+        Action   = ["logs:DescribeLogGroups"]
+        Resource = "*"
       }
     ]
   })
 }
-
-# IAM Instance Profile for EC2
-resource "aws_iam_instance_profile" "ssm_profile" {
-  name = "${var.project_name}-ssm-profile"
-  role = aws_iam_role.ssm_role.name
-
-  tags = {
-    Name = "${var.project_name}-ssm-profile"
-  }
-}
-
-# ============================================================================
-# VPC Endpoints for SSM (Required for Private Subnet Access)
-# ============================================================================
-
-# Security Group for VPC Endpoints
-resource "aws_security_group" "vpc_endpoints" {
-  name        = "${var.project_name}-vpc-endpoints-sg"
-  description = "Security group for VPC endpoints"
-  vpc_id      = aws_vpc.main-webapp.id
-
-  ingress {
-    description = "HTTPS from VPC"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    description = "All outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.project_name}-vpc-endpoints-sg"
-  }
-}
-
-# SSM Endpoint
-resource "aws_vpc_endpoint" "ssm" {
-  vpc_id              = aws_vpc.main-webapp.id
-  service_name        = "com.amazonaws.${var.aws_region}.ssm"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-ssm-endpoint"
-  }
-}
-
-# SSM Messages Endpoint
-resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id              = aws_vpc.main-webapp.id
-  service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-ssmmessages-endpoint"
-  }
-}
-
-# EC2 Messages Endpoint
-resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id              = aws_vpc.main-webapp.id
-  service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-ec2messages-endpoint"
-  }
-}
-
-# ============================================================================
-# CloudWatch Log Group for SSM Session Logs
-# ============================================================================
-
-resource "aws_cloudwatch_log_group" "ssm_sessions" {
-  name              = "/aws/ssm/${var.project_name}/sessions"
-  retention_in_days = 30
-
-  tags = {
-    Name = "${var.project_name}-ssm-sessions"
-  }
-}
-
-# ============================================================================
-# SSM Document for Session Logging
-# ============================================================================
-
+# Explicit custom document, not account-wide SSM preferences. Supply its name
+# with aws ssm start-session --document-name OUTPUT to enable these settings.
 resource "aws_ssm_document" "session_logging" {
-  name            = "${var.project_name}-session-logging"
+  name            = "${local.name_prefix}-session-logging"
   document_type   = "Session"
   document_format = "JSON"
-
   content = jsonencode({
     schemaVersion = "1.0"
-    description   = "Document to hold regional settings for Session Manager"
+    description   = "Project worker-node sessions streamed to CloudWatch"
     sessionType   = "Standard_Stream"
     inputs = {
-      s3BucketName                = ""
-      s3KeyPrefix                 = ""
-      s3EncryptionEnabled         = true
-      cloudWatchLogGroupName      = aws_cloudwatch_log_group.ssm_sessions.name
-      cloudWatchEncryptionEnabled = true
+      s3BucketName           = ""
+      s3KeyPrefix            = ""
+      s3EncryptionEnabled    = false
+      cloudWatchLogGroupName = aws_cloudwatch_log_group.ssm_sessions.name
+      # false means do not require a customer KMS key. CloudWatch still encrypts at rest.
+      cloudWatchEncryptionEnabled = false
       cloudWatchStreamingEnabled  = true
       idleSessionTimeout          = "20"
       maxSessionDuration          = "60"
       runAsEnabled                = false
-      runAsDefaultUser            = ""
     }
   })
-
-  tags = {
-    Name = "${var.project_name}-session-logging"
-  }
 }
-
-#ssm security group 
-resource "aws_security_group" "ssm_sg" {
-  name        = "${var.project_name}-ssm-sg"
-  vpc_id      = aws_vpc.main-webapp.id
-  description = "Security group for SSM VPC Endpoint"
-  ingress {
-    description     = "Allow SSM traffic from app servers"
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app_server.id]
-  }
-
-
-
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+# Optional managed policy for an administrator to attach to an existing identity.
+# Nothing is attached to a human or existing GitHub role automatically.
+resource "aws_iam_policy" "ssm_operator" {
+  name = "${local.name_prefix}-ssm-operator"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Action    = ["ssm:StartSession"]
+        Resource  = "arn:aws:ec2:${var.aws_region}:${var.aws_account_id}:instance/*"
+        Condition = { StringEquals = { "ssm:resourceTag/Project" = var.project_name, "ssm:resourceTag/Environment" = var.environment } }
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:StartSession", "ssm:GetDocument"]
+        Resource = aws_ssm_document.session_logging.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:TerminateSession", "ssm:ResumeSession"]
+        Resource = "arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:session/$${aws:userid}-*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ec2:DescribeInstances", "ssm:DescribeInstanceInformation", "ssm:DescribeSessions", "ssm:GetConnectionStatus"]
+        Resource = "*"
+      }
+    ]
+  })
 }
-

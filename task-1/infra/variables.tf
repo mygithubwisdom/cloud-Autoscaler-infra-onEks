@@ -1,256 +1,188 @@
-# PROJECT & REGION
-# ==========================================
 variable "aws_region" {
-  description = "AWS region"
+  description = "Region for every Task 1 resource."
   type        = string
   default     = "us-east-1"
 }
-
+variable "aws_account_id" {
+  description = "Intended AWS account; the provider rejects another account."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "Supply your 12-digit AWS account ID."
+  }
+}
 variable "project_name" {
-  description = "Project name for resource naming"
-  type        = string
-  default     = "cloud-engineer-onEks-assessment"
+  type    = string
+  default = "cloud-engineer-onEks-assessment"
+  validation {
+    condition     = can(regex("^[A-Za-z][A-Za-z0-9-]{2,34}$", var.project_name))
+    error_message = "Use 3-35 letters, digits or hyphens, beginning with a letter."
+  }
 }
-
 variable "environment" {
-  description = "Deployment environment"
-  type        = string
-  default     = "Production"
+  type    = string
+  default = "prod"
+  validation {
+    condition     = contains(["dev", "prod"], var.environment)
+    error_message = "Use dev or prod; this project deploys only one selected environment."
+  }
 }
-
-# ==========================================
-# COMPUTE (EC2 & ASG)
-
-variable "ami_id" {
-  description = "The AMI ID to use for the EC2 instance"
+variable "owner" {
+  description = "Non-secret owner tag."
   type        = string
+  default     = "Chinonso Ugwoh"
 }
-
-variable "key_pair_name" {
-  description = "EC2 key pair name (Kept as backup/emergency access)"
-  type        = string
-  default     = "ubuntutask"
-}
-
-variable "ec2_instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t3.medium"
-}
-
-# ==========================================
-# NETWORKING (VPC & SUBNETS)
-
-variable "vpc_name" {
-  description = "VPC name"
-  type        = string
-  default     = "main-webapp"
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "public_subnet_cidr" {
-  description = "CIDR block for the public subnet"
-  type        = string
-  default     = "10.0.1.0/24"
-}
-
-variable "public_subnet_b_cidr" {
-  description = "CIDR block for the second public subnet"
-  type        = string
-  default     = "10.0.3.0/24"
-}
-
-variable "private_subnet_cidr" {
-  description = "CIDR block for the private subnet"
-  type        = string
-  default     = "10.0.2.0/24"
-}
-
-variable "private_subnet_b_cidr" {
-  description = "CIDR block for the second private subnet"
-  type        = string
-  default     = "10.0.4.0/24"
-}
-
 variable "availability_zones" {
-  description = "List of availability zones"
-  type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  type    = list(string)
+  default = ["us-east-1a", "us-east-1b"]
+  validation {
+    condition     = length(var.availability_zones) == 2 && length(distinct(var.availability_zones)) == 2
+    error_message = "Supply exactly two different available AZs in your chosen Region."
+  }
 }
-
-variable "map_public_ip_on_launch" {
-  description = "Whether to map public IP on launch for public subnet"
+variable "cluster_name" {
+  type    = string
+  default = "assessment-cluster"
+}
+variable "kubernetes_version" {
+  description = "Explicit EKS minor version verified as supported in aws_region before planning."
+  type        = string
+  validation {
+    condition     = can(regex("^1[.][0-9]+$", var.kubernetes_version))
+    error_message = "Use a supported minor version in the form 1.NN."
+  }
+}
+variable "eks_admin_principal_arn" {
+  description = "Existing IAM role/user ARN for initial cluster administration; never an STS session ARN."
+  type        = string
+  validation {
+    condition     = can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/.+$", var.eks_admin_principal_arn))
+    error_message = "Supply an IAM role or user ARN."
+  }
+}
+variable "public_api_access" {
+  description = "Restricted public API for workstation access; private access stays enabled."
   type        = bool
   default     = true
 }
-
-# ==========================================
-# PORTS & SECURITY CONFIG
-
-
-variable "http_port" {
-  description = "HTTP port number"
-  type        = number
-  default     = 80
-}
-
-variable "https_port" {
-  description = "HTTPS port number"
-  type        = number
-  default     = 443
-}
-
-# ==========================================
-# DATABASE (RDS)
-
-variable "db_engine" {
-  description = "Database engine for RDS"
-  type        = string
-  default     = "postgres"
-}
-
-variable "db_engine_version" {
-  description = "Database engine version"
-  type        = string
-  default     = "16.1"
-}
-
-variable "db_instance_class" {
-  description = "RDS instance class"
-  type        = string
-  default     = "db.t3.micro"
-}
-
-variable "db_allocated_storage" {
-  description = "Allocated storage for the RDS instance (in GB)"
-  type        = number
-  default     = 20
-}
-
-variable "db_name" {
-  description = "Initial database name"
-  type        = string
-  default     = "appdb"
-}
-
-variable "db_username" {
-  description = "Master username for the RDS instance"
-  type        = string
-  default     = "appuser"
-}
-
-variable "db_password" {
-  description = "Master password for the RDS instance"
-  type        = string
-  sensitive   = true
-}
-
-variable "db_port" {
-  description = "Database port"
-  type        = number
-  default     = 5432
-}
-
-variable "db_multi_az" {
-  description = "Enable Multi-AZ deployment for RDS"
-  type        = bool
-  default     = false 
-}
-
-# ==========================================
-# MONITORING & COMPLIANCE
-
-variable "notification_email" {
-  description = "Email address for SNS notifications"
-  type        = string
-  default     = ""
-}
-
-variable "flow_log_retention_days" {
-  description = "Number of days to retain VPC flow logs"
-  type        = number
-  default     = 30
-}
-
-variable "cpu_low_threshold" {
-  description = "CPU utilization threshold for low CPU alarm"
-  type        = number
-  default     = 20
-}
-
-variable "cpu_high_threshold" {
-  description = "CPU utilization threshold for high CPU alarm"
-  type        = number
-  default     = 80
-}
-
-variable "iam_users_require_mfa" {
-  description = "List of IAM users that require MFA"
+variable "public_api_cidrs" {
+  description = "Trusted public IPv4 egress CIDRs, normally your IP/32. No world-open API."
   type        = list(string)
   default     = []
+  validation {
+    condition = alltrue([for cidr in var.public_api_cidrs :
+      can(cidrnetmask(cidr)) && try(tonumber(split("/", cidr)[1]) >= 24, false)
+    ])
+    error_message = "Use valid IPv4 CIDRs /24 or narrower, preferably /32."
+  }
 }
-
-# ==========================================
-# WAF & SECURITY SERVICES
-
-variable "blocked_countries" {
-  description = "List of country codes to block"
-  type        = list(string)
-  default     = []
+variable "private_api_client_security_groups" {
+  description = "Optional stable label => SG ID for an admin/runner with VPC connectivity."
+  type        = map(string)
+  default     = {}
 }
-
-variable "waf_rate_limit" {
-  description = "Rate limit per IP (requests per 5 minutes)"
-  type        = number
-  default     = 2000
-}
-
-variable "rds_kms_key_arn" {
-  description = "KMS Key ARN for RDS encryption"
+variable "node_instance_type" {
+  description = "x86_64 instance type compatible with the selected AL2023_x86_64_STANDARD AMI."
   type        = string
-  default     = "" 
+  default     = "t3.medium"
 }
-
-# variable "iam_users_require_mfa" {
-#   type = list(string)
-# }
-
-# variable "blocked_countries" {
-#   type = list(string)
-# }
-
-# variable "waf_rate_limit" {
-#   type = number
-# }
-
-variable "cluster_name" {
-  description = "Name of the EKS cluster"
+variable "node_min_size" {
+  type    = number
+  default = 2
+}
+variable "node_desired_size" {
+  type    = number
+  default = 2
+}
+variable "node_max_size" {
+  type    = number
+  default = 4
+}
+variable "node_ami_release_version" {
+  description = "Optional pinned EKS AL2023 AMI release; record the selected release after initial testing."
   type        = string
-  default     = "assessment-cluster"
+  default     = null
 }
-
-variable "cluster_security_group_id" {
-  description = "EKS-created cluster SG: aws_eks_cluster.this.vpc_config[0].cluster_security_group_id"
-  type        = string
+variable "addon_versions" {
+  description = "Explicit versions validated for kubernetes_version using describe-addon-versions."
+  type = object({
+    vpc_cni    = string
+    coredns    = string
+    kube_proxy = string
+  })
+  validation {
+    condition     = alltrue([for version in values(var.addon_versions) : can(regex("^v[0-9]+[.][0-9]+[.][0-9]+-eksbuild[.][0-9]+$", version))])
+    error_message = "Pin each add-on to a verified vX.Y.Z-eksbuild.N version."
+  }
 }
-
 variable "api_port" {
   type    = number
   default = 8080
   validation {
-    condition     = var.api_port >= 1 && var.api_port <= 65535 && floor(var.api_port) == var.api_port
-    error_message = "api_port must be an integer between 1 and 65535."
+    condition     = var.api_port >= 1024 && var.api_port <= 65535 && floor(var.api_port) == var.api_port
+    error_message = "Use an integer unprivileged API port between 1024 and 65535."
   }
 }
-
+variable "public_https_cidrs" {
+  description = "ALB visitor IPv4 ranges, distinct from Kubernetes API access."
+  type        = set(string)
+  default     = ["0.0.0.0/0"]
+  validation {
+    condition     = alltrue([for cidr in var.public_https_cidrs : can(cidrnetmask(cidr))])
+    error_message = "Supply valid IPv4 CIDRs."
+  }
+}
 variable "enable_http_redirect" {
-  description = "Open 80 only when the Ingress redirects HTTP to HTTPS."
+  type    = bool
+  default = true
+}
+variable "enable_ssm_endpoints" {
+  description = "Optional private ssm/ssmmessages endpoints. NAT already provides access; endpoints add charges."
   type        = bool
   default     = false
 }
+variable "db_engine_version" {
+  description = "Explicit supported PostgreSQL version, for example an available 16.x release. Verify in AWS."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9]+[.][0-9]+$", var.db_engine_version))
+    error_message = "Supply an available PostgreSQL major.minor version."
+  }
+}
+variable "db_instance_class" {
+  type    = string
+  default = "db.t3.micro"
+}
+variable "db_multi_az" {
+  description = "false retains the original cost-saving sandbox choice; true improves availability and costs more."
+  type        = bool
+  default     = false
+}
+variable "db_deletion_protection" {
+  type    = bool
+  default = true
+}
+variable "db_name" {
+  type    = string
+  default = "appdb"
+}
+variable "domain_name" {
+  description = "Optional API DNS name in an existing Route53 public hosted zone. Supply together with hosted_zone_id."
+  type        = string
+  default     = null
+}
+variable "hosted_zone_id" {
+  description = "Existing public Route53 hosted zone ID; no duplicate hosted zone is created."
+  type        = string
+  default     = null
+}
 
+variable "application_namespace" {
+  description = "Namespace used by Task 4 API and migration service accounts."
+  type        = string
+  default     = "prod"
+  validation {
+    condition     = length(var.application_namespace) <= 63 && can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", var.application_namespace))
+    error_message = "Use a valid Kubernetes namespace name."
+  }
+}
