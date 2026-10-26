@@ -1,5 +1,12 @@
 # Entirely simulated providers: no AWS credentials, API calls or real resources.
 mock_provider "aws" {
+  mock_resource "aws_launch_template" {
+    defaults = {
+      id             = "lt-0123456789abcdef0"
+      latest_version = 1
+    }
+  }
+
   # Provider validators still validate dependent arguments during a mock apply.
   # Supply realistic computed identifiers instead of generated random strings.
   mock_resource "aws_iam_role" {
