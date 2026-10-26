@@ -1,5 +1,29 @@
 # Entirely simulated providers: no AWS credentials, API calls or real resources.
 mock_provider "aws" {
+  # Provider validators still validate dependent arguments during a mock apply.
+  # Supply realistic computed identifiers instead of generated random strings.
+  mock_resource "aws_iam_role" {
+    defaults = { arn = "arn:aws:iam::123456789012:role/mock-workload" }
+  }
+  mock_resource "aws_iam_policy" {
+    defaults = { arn = "arn:aws:iam::123456789012:policy/mock-policy" }
+  }
+  mock_resource "aws_iam_openid_connect_provider" {
+    defaults = { arn = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/MOCK" }
+  }
+  mock_resource "aws_s3_bucket" {
+    defaults = { arn = "arn:aws:s3:::mock-alb-logs-bucket" }
+  }
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:us-east-1:123456789012:log-group:mock-group" }
+  }
+  mock_resource "aws_secretsmanager_secret" {
+    defaults = { arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:mock-app" }
+  }
+  mock_resource "aws_ssm_document" {
+    defaults = { arn = "arn:aws:ssm:us-east-1:123456789012:document/mock-session" }
+  }
+
   mock_resource "aws_eks_cluster" {
     defaults = {
       identity = [{ oidc = [{ issuer = "https://oidc.eks.us-east-1.amazonaws.com/id/MOCK" }] }]
