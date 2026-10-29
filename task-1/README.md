@@ -95,7 +95,7 @@ aws sts get-caller-identity
 cp -i terraform.tfvars.example terraform.tfvars
 ```
 
-Edit the copy, replacing every placeholder:
+I will Edit the copy, replacing every placeholder:
 
 - `aws_account_id`: actual intended account ID. It is an identifier, not a secret.
 - `eks_admin_principal_arn`: an existing IAM role or user ARN authorized to administer this cluster. For SSO/assumed roles, use the IAM role ARN, not the `arn:aws:sts::...:assumed-role/.../session` ARN. Do not grant an untrusted principal cluster administration.
