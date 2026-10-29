@@ -1,4 +1,6 @@
+
 name: Task 1 Terraform validation
+
 on:
   pull_request:
     paths:
@@ -11,30 +13,51 @@ on:
       - 'task-1/**'
       - '.github/workflows/task-1-validate.yml'
       - '.gitignore'
+
 permissions:
   contents: read
+
 concurrency:
   group: task-1-validate-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: 1.15.8
           terraform_wrapper: false
+
       - name: Format check
         run: terraform fmt -check -recursive task-1
+
       - name: Initialize infrastructure providers without S3
         run: terraform -chdir=task-1/infra init -backend=false -input=false -lockfile=readonly
+
       - name: Validate infrastructure
         run: terraform -chdir=task-1/infra validate
+
       - name: Simulated infrastructure tests without AWS credentials
         run: terraform -chdir=task-1/infra test
+
       - name: Initialize bootstrap providers without a remote backend
         run: terraform -chdir=task-1/bootstrap init -backend=false -input=false -lockfile=readonly
+
       - name: Validate bootstrap without applying it
         run: terraform -chdir=task-1/bootstrap validate
+
+      - name: Trivy IaC security scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: task-1/
+          scanners: misconfig,secret
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          format: table
