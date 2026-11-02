@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.25-alpine AS test
+FROM golang:1.26.10-alpine AS test
 WORKDIR /src
 RUN apk add --no-cache gcc musl-dev
 COPY go.mod ./
