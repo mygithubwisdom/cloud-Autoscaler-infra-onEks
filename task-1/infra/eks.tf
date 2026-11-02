@@ -11,6 +11,13 @@ resource "aws_eks_cluster" "main" {
     authentication_mode                         = "API"
     bootstrap_cluster_creator_admin_permissions = false
   }
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.eks_secrets.arn
+    }
+
+    resources = ["secrets"]
+  }
   vpc_config {
     subnet_ids              = local.private_subnet_ids
     endpoint_private_access = true
@@ -23,12 +30,23 @@ resource "aws_eks_cluster" "main" {
   }
   lifecycle {
     precondition {
-      condition     = !var.public_api_access || length(var.public_api_cidrs) > 0
-      error_message = "Public API access requires explicit trusted CIDRs; use your actual public egress IP/32."
+      condition = (
+        !var.public_api_access ||
+        (
+          length(var.public_api_cidrs) > 0 &&
+          !contains(var.public_api_cidrs, "0.0.0.0/0")
+        )
+      )
+
+      error_message = "Public API access requires specific trusted CIDRs. Do not use 0.0.0.0/0."
     }
   }
-  depends_on = [aws_iam_role_policy_attachment.eks_cluster, aws_cloudwatch_log_group.eks]
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster,
+    aws_cloudwatch_log_group.eks
+  ]
 }
+
 resource "aws_eks_access_entry" "admin" {
   cluster_name  = aws_eks_cluster.main.name
   principal_arn = var.eks_admin_principal_arn

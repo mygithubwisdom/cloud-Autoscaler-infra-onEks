@@ -54,3 +54,21 @@ resource "aws_s3_bucket_policy" "access_logs" {
   })
   depends_on = [aws_s3_bucket_public_access_block.access_logs]
 }
+
+#Add a KMS key for EKS Kubernetes Secrets encryption. This is not required for EKS to function.
+resource "aws_kms_key" "eks_secrets" {
+  description             = "KMS key for EKS Kubernetes Secrets encryption"
+  enable_key_rotation     = true
+  deletion_window_in_days = 30
+
+  tags = {
+    Name      = "${var.cluster_name}-eks-secrets"
+    Project   = var.project_name
+    ManagedBy = "Terraform"
+  }
+}
+
+resource "aws_kms_alias" "eks_secrets" {
+  name          = "alias/${var.cluster_name}-eks-secrets"
+  target_key_id = aws_kms_key.eks_secrets.key_id
+}
