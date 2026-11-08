@@ -1,0 +1,20 @@
+# AWS-0039 — EKS Kubernetes 1.36
+# AWS enables envelope encryption by default for EKS 1.28+.
+# Uses an AWS-owned KMS key; no custom encryption_config required.
+# Reference: https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html
+AVD-AWS-0039
+
+# AWS-0040 / AWS-0041 — EKS public API access
+# Accepted for this development sandbox only.
+# Public API access is intentional for kubectl from a trusted /32 IP.
+# Private API access remains enabled.
+# Review before production deployment.
+
+AVD-AWS-0040
+AVD-AWS-0041
+
+# AWS-0104 — EKS node outbound HTTPS
+# OPEN RISK: Nodes permit HTTPS egress to 0.0.0.0/0 via NAT.
+# Required for current NAT-based AWS service connectivity.
+# Review destination restrictions before deployment.
+# Do not suppress this finding until the risk is explicitly accepted.
