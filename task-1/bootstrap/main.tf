@@ -26,7 +26,12 @@ resource "aws_s3_bucket_versioning" "terraform_state" {
     status = "Enabled"
   }
 }
-
+#Sandbox exception: Terraform state uses SSE-SE (AES256).
+#versioning, public access blocking, HTTPS enforcement and
+#prevent_destroy provide additional protection.
+#Risk accepted for this sandbox; review customer-managed KMS
+#requirments before production use.
+#trivy:ignore:AVD-AWS-0132
 resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 

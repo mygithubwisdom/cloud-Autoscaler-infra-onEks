@@ -13,7 +13,9 @@ resource "aws_s3_bucket_ownership_controls" "access_logs" {
   bucket = aws_s3_bucket.access_logs.id
   rule { object_ownership = "BucketOwnerEnforced" }
 }
-# ALB log delivery requires SSE-S3; an unused customer KMS key is not created.
+
+# ALB log delivery requires SSE-S3; SSE-KMS is not supported.
+# trivy:ignore:AVD-AWS-0132
 resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
   bucket = aws_s3_bucket.access_logs.id
   rule {

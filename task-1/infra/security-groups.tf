@@ -59,6 +59,17 @@ resource "aws_vpc_security_group_ingress_rule" "eks_to_rds" {
   to_port                      = 5432
   description                  = "PostgreSQL from worker ENIs; require app NetworkPolicy too"
 }
+
+resource "aws_vpc_security_group_egress_rule" "nodes_to_rds" {
+  security_group_id            = aws_security_group.eks_nodes.id
+  referenced_security_group_id = aws_security_group.rds.id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  description                  = "PostgreSQL from EKS workers to private RDS"
+}
+
+
 resource "aws_vpc_security_group_ingress_rule" "nodes_to_api_server" {
   security_group_id            = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
   referenced_security_group_id = aws_security_group.eks_nodes.id
@@ -85,11 +96,21 @@ resource "aws_vpc_security_group_ingress_rule" "node_internal" {
   ip_protocol                  = "-1"
   description                  = "Internal node and ordinary pod communication"
 }
-resource "aws_vpc_security_group_egress_rule" "node_outbound" {
+
+resource "aws_vpc_security_group_egress_rule" "node_internal_outbound" {
+  security_group_id            = aws_security_group.eks_nodes.id
+  referenced_security_group_id = aws_security_group.eks_nodes.id
+  ip_protocol                  = "-1"
+  description                  = "Internal node and pod communication"
+}
+
+resource "aws_vpc_security_group_egress_rule" "node_outbound_https" {
   security_group_id = aws_security_group.eks_nodes.id
   cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
-  description       = "Sandbox outbound via NAT; review destination inventory before restricting"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+  description       = "HTTPS outbound for AWS APIs and required external services via NAT"
 }
 resource "aws_vpc_security_group_ingress_rule" "private_api_clients" {
   for_each                     = var.private_api_client_security_groups
