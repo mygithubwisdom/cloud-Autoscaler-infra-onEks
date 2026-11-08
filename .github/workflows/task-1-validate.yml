@@ -63,5 +63,6 @@ jobs:
           scanners: misconfig,secret
           severity: HIGH,CRITICAL
           trivyignores: .trivyignore
+          version: 'v0.76.2'
           exit-code: '1'
           format: table
