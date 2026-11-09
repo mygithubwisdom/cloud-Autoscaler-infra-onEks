@@ -1,0 +1,84 @@
+name: Task 3 Deployment Script Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'task-3/**'
+      - 'task-1/infra/**'
+      - '.github/workflows/task-3-validate.yml'
+
+  push:
+    branches: [main]
+    paths:
+      - 'task-3/**'
+      - 'task-1/infra/**'
+      - '.github/workflows/task-3-validate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-3-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Task 3 scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.15.8
+          terraform_wrapper: false
+
+      - name: Install required utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Check Bash syntax
+        run: |
+          for script in task-3/scripts/*.sh task-3/tests/*.sh; do
+            echo "Checking $script"
+            bash -n "$script"
+          done
+
+      - name: Validate Terraform without AWS backend
+        run: bash task-3/scripts/plan.sh validate
+
+      - name: Verify live Terraform planning is blocked
+        run: |
+          if bash task-3/scripts/plan.sh plan; then
+            echo "ERROR: Live planning was unexpectedly allowed"
+            exit 1
+          else
+            echo "PASS: Live planning is blocked"
+          fi
+
+      - name: Verify Terraform apply is blocked
+        run: |
+          if bash task-3/scripts/apply.sh; then
+            echo "ERROR: Terraform apply was unexpectedly allowed"
+            exit 1
+          else
+            echo "PASS: Terraform apply is blocked"
+          fi
+
+      - name: Verify EKS connection is blocked
+        run: |
+          if bash task-3/scripts/connect-eks.sh; then
+            echo "ERROR: Live EKS connection was unexpectedly allowed"
+            exit 1
+          else
+            echo "PASS: Live EKS connection is blocked"
+          fi
+
+      - name: Test health-check failure detection
+        run: bash task-3/tests/test-healthcheck.sh
