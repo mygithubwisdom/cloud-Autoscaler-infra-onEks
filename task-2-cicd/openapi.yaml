@@ -1,0 +1,127 @@
+
+openapi: 3.0.3
+
+info:
+  title: Cloud Autoscaler Assessment API
+  description: |
+    Go REST API deployed on Amazon EKS.
+    Provides service information, health checks,
+    readiness checks, and application version details.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Service
+    description: Service information
+  - name: Health
+    description: Kubernetes health and readiness probes
+  - name: Version
+    description: Application version information
+
+security: []
+
+paths:
+  /:
+    get:
+      tags:
+        - Service
+      summary: Get service information
+      operationId: getServiceInfo
+      responses:
+        '200':
+          description: Service information returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'     
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Check application health
+      operationId: getHealth
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Check application readiness
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Application is ready to receive traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  /api/version:
+    get:
+      tags:
+        - Version
+      summary: Get application version
+      operationId: getVersion
+      responses:
+        '200':
+          description: Application version returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+
+components:
+  schemas:
+    ServiceResponse:
+      type: object
+      properties:
+        service:
+          type: string
+          example: assessment-api
+        version:
+          type: string
+          example: dev
+      required:
+        - service
+        - version
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+          example: healthy
+      required:
+        - status
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ready
+          example: ready
+      required:
+        - status
+
+    VersionResponse:
+      type: object
+      properties:
+        version:
+          type: string
+          example: dev
+      required:
+        - version
