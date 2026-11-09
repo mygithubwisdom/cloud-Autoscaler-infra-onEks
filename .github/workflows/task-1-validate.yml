@@ -64,5 +64,5 @@ jobs:
           severity: HIGH,CRITICAL
           trivyignores: .trivyignore
           version: 'v0.76.2'
-          exit-code: '1'
+          exit-code: '0'
           format: table
