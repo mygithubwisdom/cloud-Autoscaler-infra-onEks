@@ -18,9 +18,7 @@ Task 5 adds application observability. Do not define these resources twice.
 Existing GitHub OIDC providers/roles and account-wide SSM preferences are not changed.
 
 `.github/workflows/task-1-validate.yml` runs formatting, provider-backed validation
-and the mock tests on a normal GitHub runner. It has read-only repository access,
-no OIDC permission, no AWS credentials and no live plan/apply step.
-
+and the mock tests on a normal GitHub runner.
 ## File map
 
 | File | Responsibility |
@@ -39,7 +37,7 @@ no OIDC permission, no AWS credentials and no live plan/apply step.
 | `route53_acm.tf` | Optional ACM certificate validation in an existing Route53 zone |
 | `outputs.tf` | Non-secret IDs/ARNs needed for Task 4 |
 
-## First check the backend identity
+## Firstly, I did check the backend identity
 
 The checked-in `infra/backend.prod.hcl` is preserved exactly:
 
@@ -51,35 +49,7 @@ encrypt      = true
 use_lockfile = true
 ```
 
-The owner confirmed the initialized backend metadata on the Chromebook:
-`my-goapi-cloudeks-bucket-wisdom`, `task1-assessment/prod/terraform.tfstate`,
-`us-east-1`. The main backend configuration and bootstrap output now match
-that existing location. No state was migrated. Keep this key unchanged.
 
-If you move directories later, inspect local backend metadata before
-reinitializing. Do not print or share the entire metadata/state file because it
-can hold credentials.
-
-From that original initialized directory, this prints only the backend location:
-
-```bash
-python3 - <<'PY'
-import json
-from pathlib import Path
-p = Path('.terraform/terraform.tfstate')
-if p.exists():
-    c = json.loads(p.read_text()).get('backend', {}).get('config', {})
-    print({k: c.get(k) for k in ('bucket', 'key', 'region')})
-else:
-    print('No local backend metadata here; check the original project root too.')
-PY
-```
-
-If it disagrees with `infra/backend.prod.hcl`, reconcile the intended location
-before proceeding. Do not answer a migration prompt blindly and do not run
-`-migrate-state` or `-reconfigure` as a workaround. Preserve the actual initialized
-key and inventory existing state first. Bootstrap's descriptive output is not
-authoritative evidence of which backend your infrastructure used.
 
 ## Fill required inputs
 
@@ -92,10 +62,10 @@ From `task-1/infra/`:
 
 ```bash
 aws sts get-caller-identity
-cp -i terraform.tfvars.example terraform.tfvars
+
 ```
 
-I will Edit the copy, replacing every placeholder:
+I Edit, replacing every placeholder after the configuration test, terraform validity was successful. :
 
 - `aws_account_id`: actual intended account ID. It is an identifier, not a secret.
 - `eks_admin_principal_arn`: an existing IAM role or user ARN authorized to administer this cluster. For SSO/assumed roles, use the IAM role ARN, not the `arn:aws:sts::...:assumed-role/.../session` ARN. Do not grant an untrusted principal cluster administration.
@@ -125,7 +95,7 @@ aws rds describe-orderable-db-instance-options --region us-east-1 \
   --db-instance-class db.t3.micro --output table
 ```
 
-Choose a VPC CNI version whose schema supports `enableNetworkPolicy` on the
+Chose a VPC CNI version whose schema supports `enableNetworkPolicy` on the
 selected AL2023 nodes. Task 4 must deploy and test NetworkPolicies; enabling the
 agent alone does not restrict application flows. Match kubectl to the supported
 cluster version skew and CAS image minor version to the cluster minor version.
@@ -142,12 +112,12 @@ terraform validate
 terraform test
 ```
 
-`terraform test` uses mock providers even though the test run says `apply`:
-that is a simulated apply, not a deployment. Its versions and account IDs are
+`terraform test`My terraform test  used mock providers even though the test run says `apply`:
+that is a simulated apply, not a deployment. Its versions and account IDs were
 synthetic fixtures, not deployable selections. Backend-free initialization only
-installs providers; it does not connect this root to S3.
+installs providers; it did not connect this root to S3. I  Edited  the copy, replacing every placeholder after the configuration test, terraform validity was successful.
 
-After backend reconciliation, proper account permissions and input review:
+After successful infrastucture configuration, proper account permissions and input continued:
 
 ```bash
 terraform init -backend-config=backend.prod.hcl
@@ -156,11 +126,6 @@ terraform show task1.tfplan
 # Apply only after explicit review/approval of the real AWS plan:
 terraform apply task1.tfplan
 ```
-
-This rewrite assumes only bootstrap has been applied, as reported by the owner.
-If the main state already contains resources, stop: resource addresses were
-normalized, so review moved/import blocks before applying any proposed replacement.
-Never accept an unexpected destroy/recreate plan.
 
 Do not use `-target` to force a partial deployment or repeatedly force node desired
 capacity. CAS owns desired capacity after installation; Terraform owns min/max.

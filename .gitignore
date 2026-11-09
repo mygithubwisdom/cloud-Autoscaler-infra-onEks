@@ -25,6 +25,7 @@ node_modules/
 override.tf.json
 *_override.tf
 *_override.tf.json
+terraform.log
 
 # Environment variables
 .env
@@ -65,3 +66,6 @@ backend.hcl
 # Local provider debug output and test state
 *.tfdebug.log
 *.tftest.json
+
+# Generated Task 1 documentation archive
+task-1-updated-documentation.zip
