@@ -12,7 +12,15 @@ type response struct {
 }
 
 // NewHandler returns the complete HTTP API without starting a network listener.
+// It preserves the existing stateless API behavior.
 func NewHandler(version string) http.Handler {
+	return NewHandlerWithReadiness(version, func() error {
+		return nil
+	})
+}
+
+// NewHandlerWithReadiness allows a dependency check to control readiness.
+func NewHandlerWithReadiness(version string, checkReady func() error) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /{$}", func(writer http.ResponseWriter, _ *http.Request) {
@@ -27,6 +35,13 @@ func NewHandler(version string) http.Handler {
 	})
 
 	mux.HandleFunc("GET /ready", func(writer http.ResponseWriter, _ *http.Request) {
+		if checkReady == nil || checkReady() != nil {
+			writeJSON(writer, http.StatusServiceUnavailable, response{
+				Status: "not_ready",
+			})
+			return
+		}
+
 		writeJSON(writer, http.StatusOK, response{Status: "ready"})
 	})
 
