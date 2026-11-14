@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-task-api-rds-ca
+  labels:
+    app.kubernetes.io/name: task-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  global-bundle.pem: |
+{{ .Files.Get "files/global-bundle.pem" | indent 4 }}
