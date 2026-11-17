@@ -13,7 +13,13 @@ output "alb_logs_prefix" { value = "alb" }
 output "node_group_name" { value = aws_eks_node_group.workers.node_group_name }
 output "node_asg_name" { value = aws_eks_node_group.workers.resources[0].autoscaling_groups[0].name }
 output "cas_role_arn" { value = aws_iam_role.cas.arn }
-output "workload_role_arns" { value = { for key, role in aws_iam_role.workload : key => role.arn } }
+
+output "workload_role_arns" {
+  value = {
+    for key, role in aws_iam_role.workload : key => role.arn
+  }
+}
+
 output "oidc_provider_arn" { value = aws_iam_openid_connect_provider.eks.arn }
 output "rds_endpoint" { value = aws_db_instance.db.address }
 output "rds_database_name" { value = aws_db_instance.db.db_name }
