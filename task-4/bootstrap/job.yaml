@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: task-api-db-bootstrap
+  namespace: prod
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      serviceAccountName: task-api-migrations
+      restartPolicy: Never
+
+      containers:
+        - name: db-bootstrap
+          image: "${BOOTSTRAP_IMAGE}"
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: AWS_REGION
+              value: "${AWS_REGION}"
+
+            - name: RDS_HOST
+              value: "${RDS_HOST}"
+
+            - name: RDS_DATABASE
+              value: "appdb"
+
+            - name: RDS_MASTER_SECRET_ARN
+              value: "${RDS_MASTER_SECRET_ARN}"
+
+            - name: APP_DB_SECRET_ARN
+              value: "${APP_DB_SECRET_ARN}"
+
+            - name: RDS_CA_BUNDLE
+              value: "/etc/ssl/rds/global-bundle.pem"
+
+          volumeMounts:
+            - name: rds-ca-bundle
+              mountPath: /etc/ssl/rds/global-bundle.pem
+              subPath: global-bundle.pem
+              readOnly: true
+
+      volumes:
+        - name: rds-ca-bundle
+          configMap:
+            name: task-api-task-api-rds-ca
+            items:
+              - key: global-bundle.pem
+                path: global-bundle.pem
