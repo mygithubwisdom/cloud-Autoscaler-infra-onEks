@@ -3,7 +3,7 @@
 FROM golang:1.26.10-alpine AS test
 WORKDIR /src
 RUN apk add --no-cache gcc musl-dev
-COPY go.mod ./
+COPY go.mod go.sum ./
 COPY cmd ./cmd
 COPY internal ./internal
 RUN go test ./...        
