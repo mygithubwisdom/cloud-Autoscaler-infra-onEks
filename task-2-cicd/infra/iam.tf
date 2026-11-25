@@ -31,11 +31,6 @@ resource "aws_iam_role" "github_actions" {
 
   assume_role_policy = data.aws_iam_policy_document.github_actions_assume_role.json
 
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-    Owner       = var.owner
-  }
 }
 
 #ecr push permissions for github actions
