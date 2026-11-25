@@ -7,14 +7,6 @@ from unittest.mock import Mock, MagicMock, patch
 
 from botocore.exceptions import ClientError
 
-from botocore.exceptions import ClientError
-
-import importlib.util
-import json
-import pathlib
-import unittest
-from unittest.mock import Mock, MagicMock, patch
-
 MODULE_PATH = pathlib.Path(__file__).with_name("bootstrap.py")
 
 spec = importlib.util.spec_from_file_location(
@@ -703,6 +695,176 @@ class TestSecretRetrieval(unittest.TestCase):
 
             publish.assert_not_called()
             verify.assert_called_once()
+
+
+    def test_main_stops_when_database_commit_fails(self):
+        env = {
+            "AWS_REGION": "us-east-1",
+            "RDS_HOST": "test-db.example.com",
+            "RDS_DATABASE": "appdb",
+            "RDS_MASTER_SECRET_ARN": "master-secret",
+            "APP_DB_SECRET_ARN": "app-secret",
+            "RDS_CA_BUNDLE": "/tmp/test-ca.pem",
+        }
+
+        credentials = {
+            "username": "app_user",
+            "password": "test-password",
+        }
+
+        with patch.dict(os.environ, env), \
+             patch.object(bootstrap.boto3, "client"), \
+             patch.object(bootstrap, "get_secret_json"), \
+             patch.object(bootstrap, "connect_to_postgres") as connect, \
+             patch.object(bootstrap, "acquire_bootstrap_lock"), \
+             patch.object(
+                 bootstrap,
+                 "get_existing_application_credentials",
+                 return_value=None,
+             ), \
+             patch.object(
+                 bootstrap,
+                 "postgres_role_exists",
+                 return_value=False,
+             ), \
+             patch.object(
+                 bootstrap,
+                 "prepare_application_credentials",
+                 return_value=(credentials, True),
+             ), \
+             patch.object(bootstrap, "create_application_role"), \
+             patch.object(bootstrap, "grant_application_permissions"), \
+             patch.object(
+                 bootstrap,
+                 "publish_application_credentials",
+             ) as publish, \
+             patch.object(
+                 bootstrap,
+                 "verify_application_credentials",
+             ) as verify:
+
+            connect.return_value.__enter__.return_value = MagicMock()
+            connect.return_value.__exit__.side_effect = RuntimeError(
+                "Database commit failed"
+            )
+
+            with self.assertRaisesRegex(
+                RuntimeError, "Database commit failed"
+            ):
+                bootstrap.main()
+
+            publish.assert_called_once()
+            verify.assert_not_called()
+
+
+    def test_main_recovers_after_commit_failure(self):
+        env = {
+            "AWS_REGION": "us-east-1",
+            "RDS_HOST": "test-db.example.com",
+            "RDS_DATABASE": "appdb",
+            "RDS_MASTER_SECRET_ARN": "master-secret",
+            "APP_DB_SECRET_ARN": "app-secret",
+            "RDS_CA_BUNDLE": "/tmp/test-ca.pem",
+        }
+
+        credentials = {
+            "username": "app_user",
+            "password": "test-password",
+        }
+
+        state = {
+            "secret": None,
+            "role_exists": False,
+        }
+
+        def get_existing_credentials(client, arn):
+            return state["secret"]
+
+        def role_exists(connection, username):
+            return state["role_exists"]
+
+        def publish_credentials(client, arn, value):
+            state["secret"] = value
+
+        def create_role(connection, username, password):
+            self.assertEqual(username, "app_user")
+            self.assertEqual(password, credentials["password"])
+
+        with patch.dict(os.environ, env), \
+             patch.object(bootstrap.boto3, "client"), \
+             patch.object(bootstrap, "get_secret_json"), \
+             patch.object(bootstrap, "connect_to_postgres") as connect, \
+             patch.object(bootstrap, "acquire_bootstrap_lock"), \
+             patch.object(
+                 bootstrap,
+                 "get_existing_application_credentials",
+                 side_effect=get_existing_credentials,
+             ), \
+             patch.object(
+                 bootstrap,
+                 "postgres_role_exists",
+                 side_effect=role_exists,
+             ), \
+             patch.object(
+                 bootstrap,
+                 "prepare_application_credentials",
+                 return_value=(credentials, True),
+             ), \
+             patch.object(
+                 bootstrap,
+                 "create_application_role",
+                 side_effect=create_role,
+             ) as create, \
+             patch.object(bootstrap, "grant_application_permissions") as grant, \
+             patch.object(
+                 bootstrap,
+                 "publish_application_credentials",
+                 side_effect=publish_credentials,
+             ) as publish, \
+             patch.object(
+                 bootstrap,
+                 "verify_application_credentials",
+             ) as verify:
+
+            connection_context = connect.return_value
+            connection_context.__enter__.return_value = MagicMock()
+
+            # First execution: secret publication succeeds,
+            # but the PostgreSQL commit fails.
+            connection_context.__exit__.side_effect = RuntimeError(
+                "Database commit failed"
+            )
+
+            with self.assertRaisesRegex(
+                RuntimeError, "Database commit failed"
+            ):
+                bootstrap.main()
+
+            self.assertEqual(state["secret"], credentials)
+            self.assertFalse(state["role_exists"])
+            verify.assert_not_called()
+
+            # Second execution: PostgreSQL is available again.
+            # The published secret is reused to recreate the role.
+            connection_context.__exit__.side_effect = None
+
+            bootstrap.main()
+
+            self.assertEqual(create.call_count, 2)
+            self.assertEqual(grant.call_count, 2)
+            publish.assert_called_once()
+            verify.assert_called_once()
+
+            # The mock represents successful database commit.
+            state["role_exists"] = True
+
+            self.assertEqual(
+                bootstrap.determine_bootstrap_action(
+                    state["secret"],
+                    state["role_exists"],
+                ),
+                "reuse",
+            )
 
 if __name__ == "__main__":
     unittest.main()

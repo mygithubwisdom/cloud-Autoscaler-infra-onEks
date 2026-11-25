@@ -212,10 +212,14 @@ alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
 alb.ingress.kubernetes.io/ssl-redirect: "443"
 alb.ingress.kubernetes.io/healthcheck-path: /ready
 alb.ingress.kubernetes.io/load-balancer-attributes: >-
+  idle_timeout.timeout_seconds=60,
   access_logs.s3.enabled=true,
   access_logs.s3.bucket=REPLACE_WITH_LOG_BUCKET_OUTPUT,
   access_logs.s3.prefix=alb
 ```
+**ALB and application idle-timeout alignment:** The ALB idle timeout is explicitly configured to 60 seconds, while the Go HTTP server uses `IdleTimeout: 75 * time.Second`. The longer application idle timeout provides a 15-second margin to reduce HTTP/1.1 connection reuse races. These settings apply to different components and should not be made equal.
+
+ALB access logging is enabled only when the Helm `ingress.accessLogs.enabled` value is set to `true` and a valid S3 logging bucket is supplied.
 
 The API DNS alias is configured after the controller creates the ALB; Task 1
 creates only the certificate-validation DNS record. Logging does not exist until

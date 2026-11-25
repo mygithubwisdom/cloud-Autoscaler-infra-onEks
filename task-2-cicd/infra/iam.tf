@@ -55,13 +55,17 @@ data "aws_iam_policy_document" "ecr_push" {
       "ecr:BatchCheckLayerAvailability",
       "ecr:BatchGetImage",
       "ecr:CompleteLayerUpload",
+      "ecr:DescribeImages",
       "ecr:GetDownloadUrlForLayer",
       "ecr:InitiateLayerUpload",
       "ecr:PutImage",
       "ecr:UploadLayerPart"
     ]
 
-    resources = [aws_ecr_repository.api.arn]
+    resources = [
+      aws_ecr_repository.api.arn,
+      aws_ecr_repository.bootstrap.arn
+    ]
   }
 }
 

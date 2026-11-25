@@ -16,6 +16,14 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-path: /ready
     alb.ingress.kubernetes.io/healthcheck-port: "traffic-port"
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
+
+    {{- if .Values.ingress.accessLogs.enabled }}
+    alb.ingress.kubernetes.io/load-balancer-attributes: {{ printf "idle_timeout.timeout_seconds=%v,access_logs.s3.enabled=true,access_logs.s3.bucket=%s,access_logs.s3.prefix=%s" .Values.ingress.idleTimeoutSeconds (required "ALB log bucket is required" .Values.ingress.accessLogs.bucket) .Values.ingress.accessLogs.prefix | quote }}
+    {{- else }}
+    alb.ingress.kubernetes.io/load-balancer-attributes: {{ printf "idle_timeout.timeout_seconds=%v,access_logs.s3.enabled=false" .Values.ingress.idleTimeoutSeconds | quote }}
+    {{- end }}
+
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
