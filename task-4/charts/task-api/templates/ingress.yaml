@@ -1,0 +1,40 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-task-api
+  labels:
+    app.kubernetes.io/name: task-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: {{ required "ingress.certificateArn is required" .Values.ingress.certificateArn | quote }}
+    alb.ingress.kubernetes.io/security-groups: {{ required "ingress.securityGroupId is required" .Values.ingress.securityGroupId | quote }}
+    alb.ingress.kubernetes.io/healthcheck-path: /ready
+    alb.ingress.kubernetes.io/healthcheck-port: "traffic-port"
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
+
+    {{- if .Values.ingress.accessLogs.enabled }}
+    alb.ingress.kubernetes.io/load-balancer-attributes: {{ printf "idle_timeout.timeout_seconds=%v,access_logs.s3.enabled=true,access_logs.s3.bucket=%s,access_logs.s3.prefix=%s" .Values.ingress.idleTimeoutSeconds (required "ALB log bucket is required" .Values.ingress.accessLogs.bucket) .Values.ingress.accessLogs.prefix | quote }}
+    {{- else }}
+    alb.ingress.kubernetes.io/load-balancer-attributes: {{ printf "idle_timeout.timeout_seconds=%v,access_logs.s3.enabled=false" .Values.ingress.idleTimeoutSeconds | quote }}
+    {{- end }}
+
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ required "ingress.host is required" .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-task-api
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}

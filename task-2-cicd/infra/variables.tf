@@ -1,7 +1,13 @@
 variable "ecr_repository_name" {
   description = "Name of the private ECR repository."
   type        = string
-  default     = "cloud-engineer-onEks-assessment/assessment-api"
+  default     = "cloud-engineer-oneks-assessment/assessment-api"
+}
+
+variable "bootstrap_ecr_repository_name" {
+  description = "Name of the private ECR repository for the PostgreSQL bootstrap image."
+  type        = string
+  default     = "cloud-engineer-oneks-assessment/assessment-db-bootstrap"
 }
 
 variable "aws_region" {

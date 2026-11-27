@@ -7,7 +7,6 @@ crash.log
 .env
 .env.*
 !.env.example
-*.pem
 *.key
 backups/
 
@@ -47,6 +46,7 @@ Thumbs.db
 
 # SSH keys
 *.pem
+!task-4/charts/task-api/files/global-bundle.pem
 *.key
 
 # Test coverage
@@ -69,3 +69,10 @@ backend.hcl
 
 # Generated Task 1 documentation archive
 task-1-updated-documentation.zip
+
+# Python virtual environments
+.venv/
+venv/
+
+# Python test cache
+.pytest_cache/

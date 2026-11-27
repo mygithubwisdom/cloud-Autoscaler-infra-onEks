@@ -35,9 +35,51 @@ resource "aws_iam_role_policy_attachment" "vpc_cni" {
   role       = aws_iam_role.workload["vpc_cni"].name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
+locals {
+  alb_controller_upstream_policy = jsondecode(
+    file("${path.module}/policies/alb-controller-v3.7.0.json")
+  )
+
+  alb_controller_hardened_policy = merge(
+    local.alb_controller_upstream_policy,
+    {
+      Statement = [
+        for statement in local.alb_controller_upstream_policy.Statement :
+        jsondecode(
+          contains(try(tolist(statement.Action), []), "ec2:AuthorizeSecurityGroupIngress") ?
+          jsonencode(merge(
+            statement,
+            {
+              Resource = replace(
+                aws_vpc.main.arn,
+                "vpc/${aws_vpc.main.id}",
+                "security-group/*"
+              )
+
+              Condition = merge(
+                try(statement.Condition, {}),
+                {
+                  ArnEquals = {
+                    "ec2:Vpc" = aws_vpc.main.arn
+                  }
+                },
+                contains(statement.Action, "ec2:DeleteSecurityGroup") ? {
+                  StringEquals = {
+                    "aws:ResourceTag/elbv2.k8s.aws/cluster" = var.cluster_name
+                  }
+                } : {}
+              )
+            }
+          )) :
+          jsonencode(statement)
+        )
+      ]
+    }
+  )
+}
 resource "aws_iam_policy" "alb_controller" {
   name   = "${local.name_prefix}-alb-controller"
-  policy = file("${path.module}/policies/alb-controller-v2.14.1.json")
+  policy = jsonencode(local.alb_controller_hardened_policy)
 }
 resource "aws_iam_role_policy_attachment" "alb_controller" {
   role       = aws_iam_role.workload["alb_controller"].name

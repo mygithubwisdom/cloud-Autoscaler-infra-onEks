@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-task-api-config
+  labels:
+    app.kubernetes.io/name: task-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  PORT: {{ .Values.env.PORT | quote }}
+
+  DB_HOST: {{ required "database.host is required" .Values.database.host | quote }}
+  DB_PORT: {{ .Values.database.port | quote }}
+  DB_NAME: {{ required "database.name is required" .Values.database.name | quote }}
+  DB_USER: {{ required "database.user is required" .Values.database.user | quote }}
+  DB_SSLMODE: "verify-full"
+
+  DB_PASSWORD_FILE: "/mnt/secrets-store/db-password"
+  DB_SSLROOTCERT: "/etc/ssl/rds/global-bundle.pem"

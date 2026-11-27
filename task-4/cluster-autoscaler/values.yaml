@@ -1,0 +1,35 @@
+# Cluster Autoscaler for EKS Kubernetes 1.36
+# Helm chart: autoscaler/cluster-autoscaler
+# Chart version: 9.60.0
+# Image version: v1.36.2
+
+cloudProvider: aws
+awsRegion: us-east-1
+
+autoDiscovery:
+  clusterName: assessment-cluster
+
+image:
+  repository: registry.k8s.io/autoscaling/cluster-autoscaler
+  tag: v1.36.2
+  pullPolicy: IfNotPresent
+
+rbac:
+  create: true
+  clusterScoped: true
+  serviceAccount:
+    create: true
+    name: cluster-autoscaler
+    annotations:
+      # Inject Task 1 Terraform output cas_role_arn before deployment.
+      eks.amazonaws.com/role-arn: ""
+
+replicaCount: 1
+
+# Resource allocation for the Cluster Autoscaler controller.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi

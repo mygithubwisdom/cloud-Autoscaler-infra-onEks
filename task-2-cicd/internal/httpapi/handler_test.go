@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"errors"
 	"net/http/httptest"
 	"testing"
 )
@@ -74,4 +75,32 @@ func TestReadyEndpoint(t *testing.T) {
 	if body.Status != "ready" {
 		t.Fatalf("expected ready status, got %q", body.Status)
 	}
+}
+
+func TestReadyEndpointWhenDependencyFails(t *testing.T) {
+    request := httptest.NewRequest(http.MethodGet, "/ready", nil)
+    recorder := httptest.NewRecorder()
+
+    checkReady := func() error {
+        return errors.New("database unavailable")
+    }
+
+    NewHandlerWithReadiness("test", checkReady).ServeHTTP(recorder, request)
+
+    if recorder.Code != http.StatusServiceUnavailable {
+        t.Fatalf(
+            "expected status %d, got %d",
+            http.StatusServiceUnavailable,
+            recorder.Code,
+        )
+    }
+
+    var body response
+    if err := json.NewDecoder(recorder.Body).Decode(&body); err != nil {
+        t.Fatalf("decode response: %v", err)
+    }
+
+    if body.Status != "not_ready" {
+        t.Fatalf("expected not_ready, got %q", body.Status)
+    }
 }

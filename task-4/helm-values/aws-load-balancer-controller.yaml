@@ -1,0 +1,50 @@
+# AWS Load Balancer Controller
+# Helm chart version: 3.7.0
+# Target Kubernetes version: 1.36
+
+replicaCount: 2
+
+image:
+  repository: public.ecr.aws/eks/aws-load-balancer-controller
+  tag: v3.7.0
+  pullPolicy: IfNotPresent
+
+clusterName: assessment-cluster
+region: us-east-1
+
+# Inject from Terraform output at deployment time.
+vpcId: ""
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  automountServiceAccountToken: true
+  annotations:
+    eks.amazonaws.com/role-arn: ""
+
+autoscaling:
+  enabled: false
+
+# Terraform manages the security group rules.
+enableBackendSecurityGroup: false
+enableManageBackendSecurityGroupRules: false
+
+# Application uses ClusterIP Service behind ALB Ingress.
+enableServiceMutatorWebhook: false
+
+# Explicitly disable unused Gateway API functionality.
+controllerConfig:
+  featureGates:
+    NLBGatewayAPI: false
+    ALBGatewayAPI: false
+    GatewayListenerSet: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+configureDefaultAffinity: true
+priorityClassName: system-cluster-critical
